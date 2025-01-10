@@ -14,12 +14,12 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 
 contract Raffle is VRFConsumerBaseV2Plus {
     error Raffle__SendMoreETH();
-    error Raffle__NotOpen();
+    error Raffle__RaffleNotOpen();
     error Raffle__TransferFailed();
     error Raffle__UpkeepNotNeeded(
-        address balance,
-        uint256 length,
-        uint256 r_raffleState
+        uint256 currentBalance,
+        uint256 numPlayers,
+        uint256 raffleState
     );
     /* Type Declarations */
     enum RaffleState {
@@ -31,7 +31,6 @@ contract Raffle is VRFConsumerBaseV2Plus {
     uint256 private immutable i_entranceFee; //for private variable we create constructors to define them
     uint256 private immutable i_interval;
     address payable[] private s_players;
-    uint256 private s_lastTimeStamp;
     bytes32 private immutable i_keyHash;
     uint256 private immutable i_subscriptionId;
     uint32 private immutable i_callbackGasLimit;
@@ -57,7 +56,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         i_keyHash = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
-        s.raffleState = RaffleState.OPEN;
+        s_raffleState = RaffleState.OPEN;
     }
 
     function enterRaffle() external payable {
@@ -68,7 +67,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
             revert Raffle__RaffleNotOpen();
         }
 
-        emit RaffledEntered(msg.sender);
+        emit RaffleEntered(msg.sender);
     }
 
     /**
@@ -95,11 +94,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
     function performUpkeep(bytes calldata /* performData */) external {
         //seeing if enough time has passed
 
-        (bool upkeeNeeded, ) = checkUpkeep("");
+        (bool upkeepNeeded, ) = checkUpkeep("");
         if (!upkeepNeeded)
             revert Raffle__UpkeepNotNeeded(
                 address(this).balance,
-                s.players.length,
+                s_players.length,
                 uint256(s_raffleState)
             );
 
@@ -132,7 +131,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
         s_raffleState = RaffleState.OPEN;
         s_players = new address payable[](0); //reset the array
-        s.s_lastTimeStamp = block.timestamp;
+        s_lastTimeStamp = block.timestamp;
 
         (bool success, ) = recentWinner.call{value: address(this).balance}("");
         if (!success) revert Raffle__TransferFailed();
