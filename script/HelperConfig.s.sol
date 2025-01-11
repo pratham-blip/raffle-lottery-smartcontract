@@ -49,7 +49,7 @@ contract HelperConfig is CodeConstants, Script {
     }
 
     function getConfig() public returns (NetworkConfig memory) {
-        return getConfigByChainId(blockchain.chainId);
+        return getConfigByChainId(block.chainid);
     }
 
     function getSepoliaEthConfig() public pure returns (NetworkConfig memory) {
