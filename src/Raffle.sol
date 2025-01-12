@@ -148,8 +148,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         return s_raffleState;
     }
 
-function getPlayer(uint256 indexOfPlayer) public view returns(address) {
-         returns s_players[indexOfPlayer];
-}
-
+    function getPlayer(uint256 indexOfPlayer) public view returns (address) {
+        return s_players[indexOfPlayer];
+    }
 }
