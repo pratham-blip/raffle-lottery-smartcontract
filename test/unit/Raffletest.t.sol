@@ -63,7 +63,7 @@ contract Raffletest is Test {
     function testEnterRaffleEmitsEvent() public {
         vm.prank(PLAYER);
 
-        vm.expectEmit(true, false, false, false, address(Raffle));
+        vm.expectEmit(true, false, false, false, address(raffle));
         emit RaffleEntered(PLAYER);
 
         raffle.enterRaffle{value: _entranceFee}();
@@ -71,18 +71,13 @@ contract Raffletest is Test {
 
     function testdontAllowEnterRaffleWhenRaffleIsNotOpen() public {
         vm.prank(PLAYER);
-
         raffle.enterRaffle{value: _entranceFee}();
-
         vm.warp(block.timestamp + interval + 1);
-
         vm.roll(block.timestamp + 1);
-        raffle.PerformUpkeep("");
+        raffle.performUpkeep("");
 
         vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
-
         vm.prank(PLAYER);
-
         raffle.enterRaffle{value: _entranceFee}();
     }
 }
