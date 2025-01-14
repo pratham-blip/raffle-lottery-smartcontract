@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.19;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {Raffle} from "../../src/Raffle.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
@@ -41,7 +41,7 @@ contract Raffletest is Test {
     }
 
     function testRaffleStateInitializedAsOpenState() public view {
-        assert(raffle.getRafflState() == Raffle.RaffleState.OPEN);
+        assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
     }
 
     function testRaffleRevertWhenYouDonnotPayEnough() public {
@@ -72,12 +72,56 @@ contract Raffletest is Test {
     function testdontAllowEnterRaffleWhenRaffleIsNotOpen() public {
         vm.prank(PLAYER);
         raffle.enterRaffle{value: _entranceFee}();
+        console2.log(uint(raffle.getRaffleState())); //
+
         vm.warp(block.timestamp + interval + 1);
         vm.roll(block.timestamp + 1);
         raffle.performUpkeep("");
+        console2.log(uint(raffle.getRaffleState())); //
 
         vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
         vm.prank(PLAYER);
         raffle.enterRaffle{value: _entranceFee}();
+        console2.log(uint(raffle.getRaffleState())); //
+    }
+
+    // performUpkeep tests
+
+    function testCheckUpkeepRetuensFalseIfithasnoBalance() public {
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.timestamp + 1);
+
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+
+        assert(!upkeepNeeded);
+    }
+    function testcheckUpkeepReturnFalseIfRaffleisntopen() public {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: raffleEntranceFee}();
+        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        vm.roll(block.number + 1);
+        raffle.performUpkeep("");
+
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+
+        assert(!upkeepNeeded);
+    }
+
+    //challamge
+    //testcheckupkeepreturnsfalseifenoughtimehaspassed
+
+    //testCheckUpKeepReturnsTrueWhenParametersAreGood
+
+    ////perform upkeep///
+
+    function PerformUpkeepWorkonlyWhenCheckUpkeepIsTrue() public {
+        //arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: raffleEntranceFee}();
+        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        vm.roll(block.number + 1);
+
+        //act //assert
+        raffle.performUpkeep(""); //if this fails whole test fails
     }
 }
