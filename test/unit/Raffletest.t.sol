@@ -6,6 +6,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {Raffle} from "../../src/Raffle.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 contract Raffletest is Test {
     Raffle public raffle;
@@ -97,8 +98,8 @@ contract Raffletest is Test {
     }
     function testcheckUpkeepReturnFalseIfRaffleisntopen() public {
         vm.prank(PLAYER);
-        raffle.enterRaffle{value: raffleEntranceFee}();
-        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        raffle.enterRaffle{value: _entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
         vm.roll(block.number + 1);
         raffle.performUpkeep("");
 
@@ -117,11 +118,55 @@ contract Raffletest is Test {
     function PerformUpkeepWorkonlyWhenCheckUpkeepIsTrue() public {
         //arrange
         vm.prank(PLAYER);
-        raffle.enterRaffle{value: raffleEntranceFee}();
-        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        raffle.enterRaffle{value: _entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
         vm.roll(block.number + 1);
 
         //act //assert
         raffle.performUpkeep(""); //if this fails whole test fails
     }
+
+    function testPerformUpkeepResvertsIfCHECKUPKEEPISFALSE() public {
+        uint256 currBalance = 0;
+        uint256 numPlayers = 0;
+        Raffle.RaffleState rstate = raffle.getRaffleState();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Raffle.Raffle__UpkeepNotNeeded.selector,
+                currBalance,
+                numPlayers,
+                rstate
+            )
+        );
+
+        raffle.performUpkeep("");
+    }
+
+    modifier raffleEntered() {
+        //arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: _entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        _;
+    }
+
+    function testPerformUpkeepUpdatesRaffleStatemiandetsRequestId()
+        public
+        raffleEntered ///////modifier//////
+    {
+        //act
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes requestId = entries[1].topics[1];
+        //assert
+
+        Raffle.RaffleState rstate = raffle.getRaffleState();
+        assert(uint256(requestId) > 0);
+        assert(uint256(rstate) == 1);
+    }
+
+    ////////////////////////fullFillRandomWords/////////////////////
 }
