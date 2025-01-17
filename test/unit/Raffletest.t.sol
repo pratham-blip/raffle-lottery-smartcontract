@@ -7,6 +7,7 @@ import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {Raffle} from "../../src/Raffle.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {Vm} from "forge-std/Vm.sol";
+import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 contract Raffletest is Test {
     Raffle public raffle;
@@ -169,4 +170,41 @@ contract Raffletest is Test {
     }
 
     ////////////////////////fullFillRandomWords/////////////////////
+
+    function testFullFillrandomWordsCanOnlyBeCalledAfterPerformUpkeep(
+        ////fuzz test
+        uint256 randomRequestId
+    ) public raffleEntered {
+        vm.expectRevert(VRFCoordinatorV2_5.InvalidRequest.selector);
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
+            randomRequestId,
+            address(raffle)
+        );
+    }
+
+    function testFullFillrandomWordsSetsPicksWinnerRestsAndSendMoney()
+        public
+        raffleEntered
+    {
+        uint256 additionalEntrants = 3;
+        uint256 startingIndex = 1;
+
+        for (
+            uint256 i = startingIndex;
+            i < startingIndex + additionalEntrants;
+            i++
+        ) {
+            address newPlayer = address(uint16(i));
+
+            hoax(newPlayer, 1 ether);
+            raffle.enterRaffle{value: _entranceFee}();
+        }
+
+        uint256 startingTimeStamp = raffle.getLastTimeStamp();
+
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes requestId = entries[1].topics[1];
+    }
 }
