@@ -161,7 +161,7 @@ contract Raffletest is Test {
         vm.recordLogs();
         raffle.performUpkeep("");
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        bytes requestId = entries[1].topics[1];
+        bytes32 requestId = entries[1].topics[1];
         //assert
 
         Raffle.RaffleState rstate = raffle.getRaffleState();
@@ -175,7 +175,7 @@ contract Raffletest is Test {
         ////fuzz test
         uint256 randomRequestId
     ) public raffleEntered {
-        vm.expectRevert(VRFCoordinatorV2_5.InvalidRequest.selector);
+        vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
             randomRequestId,
             address(raffle)
@@ -188,23 +188,40 @@ contract Raffletest is Test {
     {
         uint256 additionalEntrants = 3;
         uint256 startingIndex = 1;
+        address expectedWinner = address(1);
 
         for (
             uint256 i = startingIndex;
             i < startingIndex + additionalEntrants;
             i++
         ) {
-            address newPlayer = address(uint16(i));
+            address newPlayer = address(uint160(i));
 
             hoax(newPlayer, 1 ether);
             raffle.enterRaffle{value: _entranceFee}();
         }
 
         uint256 startingTimeStamp = raffle.getLastTimeStamp();
+        uint256 WinnerStartingBalance = expectedWinner.balance;
 
         vm.recordLogs();
         raffle.performUpkeep("");
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        bytes requestId = entries[1].topics[1];
+        bytes32 requestId = entries[1].topics[1];
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
+            uint(requestId),
+            address(raffle)
+        );
+
+        address recentWinner = raffle.getRecentWinner();
+        Raffle.RaffleState rstate = raffle.getRaffleState();
+        uint256 winnerBalance = recentWinner.balance;
+        uint256 endingTimeStamp = raffle.getLastTimeStamp();
+        uint256 prize = _entranceFee * (additionalEntrants + 1);
+
+        assert(recentWinner == expectedWinner);
+        assert(uint256(rstate) == 0);
+        assert(winnerBalance == WinnerStartingBalance + prize);
+        assert(endingTimeStamp > startingTimeStamp);
     }
 }
